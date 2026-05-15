@@ -1,0 +1,206 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EVO X PRO | Premium Tournament</title>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap');
+        body { font-family: 'Poppins', sans-serif; background: #f1f5f9; user-select: none; }
+        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .page { display: none; padding-bottom: 100px; }
+        .page.active { display: block; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .match-card { border-radius: 25px; overflow: hidden; background: white; border: 1px solid #e2e8f0; transition: 0.3s; }
+        .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 500px; background: white; display: flex; justify-content: space-around; padding: 15px 0; border-radius: 30px 30px 0 0; box-shadow: 0 -10px 30px rgba(0,0,0,0.1); z-index: 1000; }
+        .nav-item { font-size: 10px; color: #94a3b8; font-weight: bold; text-align: center; }
+        .nav-item.active { color: #f59e0b; }
+    </style>
+</head>
+<body class="max-w-[500px] mx-auto min-h-screen relative shadow-2xl">
+
+    <div id="m-ui" class="hidden fixed inset-0 bg-black z-[9999] flex flex-col items-center justify-center text-white text-center p-6">
+        <h1 class="text-3xl font-black text-yellow-500 mb-2 italic">SERVER OFF</h1>
+        <p class="text-gray-400 text-sm">অ্যাডমিন থেকে সার্ভার অন করার জন্য অপেক্ষা করুন।</p>
+    </div>
+
+    <header class="glass p-4 sticky top-0 z-[100] border-b flex justify-between items-center">
+        <h1 class="text-2xl font-black italic tracking-tighter">EVO X <span class="text-yellow-500">PRO</span></h1>
+        <div id="user-sec" class="flex items-center gap-2">
+            <button onclick="login()" class="bg-black text-white px-5 py-2 rounded-2xl text-[10px] font-bold uppercase">Login</button>
+        </div>
+    </header>
+
+    <div id="home" class="page active p-4">
+        <div class="rounded-[2.5rem] overflow-hidden shadow-xl mb-4 border-4 border-white h-44">
+            <img id="main-banner" src="" class="w-full h-full object-cover bg-gray-200">
+        </div>
+        <div class="bg-slate-900 text-white p-2 rounded-2xl mb-6 flex items-center gap-2 overflow-hidden">
+            <span class="bg-red-500 text-white text-[8px] px-2 py-1 rounded font-black">NEWS</span>
+            <marquee id="notice" class="text-xs italic font-medium opacity-80"></marquee>
+        </div>
+        <div class="grid grid-cols-2 gap-4" id="cat-grid">
+            </div>
+    </div>
+
+    <div id="wallet" class="page p-6">
+        <div class="bg-slate-900 rounded-[2.5rem] p-8 text-white text-center mb-6 shadow-2xl relative overflow-hidden">
+            <p class="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Total Balance</p>
+            <h1 class="text-5xl font-black italic">৳<span id="u-bal">0.00</span></h1>
+        </div>
+
+        <div class="bg-white p-6 rounded-[2rem] border mb-4">
+            <h3 class="font-black text-sm mb-4">DEPOSIT MONEY (৳)</h3>
+            <div class="space-y-3">
+                <input type="number" id="dep-amt" placeholder="Amount (৳)" class="w-full p-3 bg-slate-50 border rounded-xl outline-none text-sm">
+                <input type="text" id="dep-trx" placeholder="Transaction ID (TrxID)" class="w-full p-3 bg-slate-50 border rounded-xl outline-none text-sm">
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="requestMoney('Deposit', 'Bkash')" class="bg-[#e2136e] text-white py-3 rounded-xl text-xs font-bold">BKASH</button>
+                    <button onclick="requestMoney('Deposit', 'Nagad')" class="bg-[#f7941d] text-white py-3 rounded-xl text-xs font-bold">NAGAD</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-[2rem] border">
+            <h3 class="font-black text-sm mb-4">WITHDRAW MONEY (৳)</h3>
+            <div class="space-y-3">
+                <input type="number" id="wd-amt" placeholder="Amount (৳)" class="w-full p-3 bg-slate-50 border rounded-xl outline-none text-sm">
+                <input type="text" id="wd-num" placeholder="Your Number" class="w-full p-3 bg-slate-50 border rounded-xl outline-none text-sm">
+                <button onclick="requestMoney('Withdraw', 'Selected')" class="w-full bg-slate-900 text-white py-4 rounded-xl text-xs font-black uppercase">Send Withdraw Request</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin" class="page p-6 bg-white min-h-screen">
+        <h2 class="font-black text-xl italic mb-6">ADMIN <span class="text-yellow-500">DASHBOARD</span></h2>
+        <div class="grid grid-cols-1 gap-4 overflow-y-auto">
+            <button id="srv-btn" onclick="toggleSrv()" class="p-4 rounded-2xl font-black text-[10px] border"></button>
+            <input type="text" id="adm-ban" placeholder="New Banner URL" class="p-3 border rounded-xl text-xs">
+            <button onclick="updateSet('banner', 'adm-ban')" class="bg-blue-600 text-white py-3 rounded-xl text-xs font-bold">1. UPDATE BANNER</button>
+            <input type="text" id="adm-not" placeholder="Notice Text" class="p-3 border rounded-xl text-xs">
+            <button onclick="updateSet('notice', 'adm-not')" class="bg-black text-white py-3 rounded-xl text-xs font-bold">2. UPDATE NOTICE</button>
+            <input type="text" id="adm-num" placeholder="Bkash/Nagad Number" class="p-3 border rounded-xl text-xs">
+            <button onclick="updateSet('number', 'adm-num')" class="bg-purple-600 text-white py-3 rounded-xl text-xs font-bold">3. UPDATE PAYMENT NUMBER</button>
+            <hr>
+            <div id="admin-requests" class="space-y-2">
+                <p class="text-[10px] font-black opacity-50">4-20: REQ LISTS & MATCH CONTROL (SYNCING...)</p>
+            </div>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="showP('home', this)"><i class="fa-solid fa-gamepad text-xl mb-1"></i><br>PLAY</div>
+        <div class="nav-item" onclick="showP('wallet', this)"><i class="fa-solid fa-wallet text-xl mb-1"></i><br>WALLET</div>
+        <div class="nav-item" onclick="adminLogin()"><i class="fa-solid fa-user-shield text-xl mb-1"></i><br>ADMIN</div>
+    </nav>
+
+<script>
+    // --- FIREBASE CONFIG (Your Latest API) ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyDEvBk9SoVR7FNv-rXhEHsZXSBA74Ts9Ic",
+      authDomain: "evo-x-tournament.firebaseapp.com",
+      databaseURL: "https://evo-x-tournament-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "evo-x-tournament",
+      storageBucket: "evo-x-tournament.firebasestorage.app",
+      messagingSenderId: "490738768100",
+      appId: "1:490738768100:web:2935ee46b163069dee74f1"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const auth = firebase.auth();
+
+    // --- 🔑 AUTH & WALLET ---
+    function login() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).then(res => {
+            db.ref('users/' + res.user.uid).once('value', s => {
+                if(!s.exists()) db.ref('users/' + res.user.uid).set({ name: res.user.displayName, balance: 0, photo: res.user.photoURL });
+            });
+            location.reload();
+        });
+    }
+
+    auth.onAuthStateChanged(user => {
+        if(user) {
+            db.ref('users/' + user.uid + '/balance').on('value', s => {
+                const bal = s.val() || 0;
+                document.getElementById('u-bal').innerText = bal.toFixed(2);
+                document.getElementById('user-sec').innerHTML = `
+                    <div class="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-[10px] font-black">৳${bal}</div>
+                    <img src="${user.photoURL}" class="w-8 h-8 rounded-full border-2 border-yellow-500">
+                `;
+            });
+        }
+    });
+
+    // --- 🛰️ SETTINGS SYNC ---
+    db.ref('settings').on('value', snap => {
+        const d = snap.val() || {};
+        if(!d.server) db.ref('settings').set({ server: "on", banner: "https://via.placeholder.com/600x250", notice: "Welcome!", number: "01XXXXXXXXX" });
+        
+        document.getElementById('m-ui').style.display = d.server === 'off' ? 'flex' : 'none';
+        document.getElementById('main-banner').src = d.banner;
+        document.getElementById('notice').innerText = d.notice + " | Admin Number: " + d.number;
+        
+        const btn = document.getElementById('srv-btn');
+        btn.innerText = `SERVER STATUS: ${d.server?.toUpperCase()}`;
+        btn.className = d.server === 'on' ? 'p-4 rounded-2xl font-black text-[10px] bg-green-50 text-green-600 border-green-100' : 'p-4 rounded-2xl font-black text-[10px] bg-red-50 text-red-600 border-red-100';
+    });
+
+    // --- 🎮 CATEGORY CARDS ---
+    const cats = [
+        { n: "LONE WOLF 1V1", i: "https://via.placeholder.com/300x180?text=LONE+WOLF" },
+        { n: "BR SOLO CLASSIC", i: "https://via.placeholder.com/300x180?text=BR+SOLO" },
+        { n: "CS 2V2 ELITE", i: "https://via.placeholder.com/300x180?text=CS+2V2" },
+        { n: "CS 4V4 CUSTOM", i: "https://via.placeholder.com/300x180?text=CS+4V4" }
+    ];
+    const grid = document.getElementById('cat-grid');
+    cats.forEach(c => {
+        grid.innerHTML += `
+        <div class="match-card shadow-sm border" onclick="alert('Matches Loading...')">
+            <img src="${c.i}" class="w-full h-24 object-cover">
+            <div class="p-3 text-center">
+                <h4 class="font-black italic text-[10px] uppercase truncate">${c.n}</h4>
+                <p class="text-[8px] text-green-500 font-bold">JOIN NOW</p>
+            </div>
+        </div>`;
+    });
+
+    // --- 💵 TRANSACTION LOGIC ---
+    function requestMoney(type, method) {
+        if(!auth.currentUser) return login();
+        const amt = document.getElementById(type === 'Deposit' ? 'dep-amt' : 'wd-amt').value;
+        const info = document.getElementById(type === 'Deposit' ? 'dep-trx' : 'wd-num').value;
+        if(amt < 10 || !info) return alert("সঠিক তথ্য দিন (কমপক্ষে ১০ টাকা)");
+
+        db.ref('money_requests').push({
+            uid: auth.currentUser.uid,
+            name: auth.currentUser.displayName,
+            type: type,
+            amount: amt,
+            info: info,
+            method: method,
+            status: 'pending'
+        }).then(() => alert(type + " রিকোয়েস্ট পাঠানো হয়েছে!"));
+    }
+
+    // --- 🛡️ ADMIN CORE ---
+    function adminLogin() { if(prompt("Key:") === "tawsif728027") showP('admin', document.querySelector('.nav-item:last-child')); }
+    function updateSet(k, i) { const v = document.getElementById(i).value; if(v) db.ref('settings/'+k).set(v).then(()=>alert("Saved!")); }
+    function toggleSrv() { db.ref('settings/server').once('value', s => db.ref('settings/server').set(s.val()==='on'?'off':'on')); }
+    
+    function showP(id, el) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        el.classList.add('active');
+    }
+</script>
+</body>
+</html>
